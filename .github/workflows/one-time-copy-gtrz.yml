@@ -1,0 +1,38 @@
+name: One-time copy of GTRZ landing
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  copy-current-site:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout backup repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Copy complete current gtrz-landing snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_DIR="$(mktemp -d)/gtrz-landing"
+          git clone --depth 1 https://github.com/jotavgalves/gtrz-landing.git "$SOURCE_DIR"
+          rsync -a --delete --exclude='.git/' "$SOURCE_DIR/" ./
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Backup already matches source."
+            exit 0
+          fi
+
+          git commit -m "Backup current gtrz-landing snapshot"
+          git push origin HEAD:main
